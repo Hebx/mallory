@@ -3,8 +3,7 @@
  * Assembles all options for the AI streaming call
  */
 
-import { convertToModelMessages, UIMessage, stepCountIs } from 'ai';
-import { AnthropicProviderOptions } from '@ai-sdk/anthropic';
+import { UIMessage, convertToModelMessages } from 'ai';
 import { getToolDisplayName, formatToolResultsForLog } from '../../../lib/toolDisplayNames';
 
 interface StreamConfigOptions {
@@ -24,16 +23,20 @@ interface StreamConfigOptions {
 export function buildStreamConfig(options: StreamConfigOptions) {
   const { model, processedMessages, systemPrompt, tools, strategy } = options;
   
+  const modelMessages = convertToModelMessages(
+    processedMessages.map(({ id, ...rest }) => rest)
+  );
+  
   return {
     model,
-    messages: convertToModelMessages(processedMessages),
+    messages: modelMessages,
     system: systemPrompt,
-    temperature: 0.7,
+    temperature: 0.8, // Higher temperature for more creative/agentic behavior
     
     tools,
     
-    // Multi-step reasoning
-    stopWhen: stepCountIs(10),
+    // Multi-step reasoning - limit to 10 steps
+    maxSteps: 10,
     
     // Agent lifecycle hooks for monitoring
     onStepFinish: ({ text, toolCalls, toolResults, finishReason, ...step }: any) => {

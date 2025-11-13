@@ -16,12 +16,12 @@ import { ensureToolMessageStructure, validateToolMessageStructure, logMessageStr
 
 const router: Router = express.Router();
 
-const getClaudeModel = () => {
-  return process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
+const getOpenAIModel = () => {
+  return process.env.OPENAI_MODEL || 'gpt-4o';
 };
 
 /**
- * Chat endpoint for AI streaming with Claude
+ * Chat endpoint for AI streaming with OpenAI
  * POST /api/chat
  */
 router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
@@ -164,7 +164,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
       conversationMessages,
       conversationId,
       userId,
-      getClaudeModel()
+      getOpenAIModel()
     );
 
     // After getting context, store the current user message to OpenMemory
@@ -224,7 +224,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
     };
 
     // Log model configuration with actual enabled tools
-    logModelConfiguration(messages, tools, getClaudeModel());
+    logModelConfiguration(messages, tools, getOpenAIModel());
 
     // Prepare onboarding context if applicable
     const onboardingContext = (isOnboardingGreeting && isOnboardingConversation) ? {
@@ -364,6 +364,23 @@ function buildSystemPrompt(
   // 1. Core Mallory identity and personality
   sections.push(MALLORY_BASE_PROMPT);
   
+  // 1.5. First message greeting behavior (for regular, non-onboarding conversations)
+  if (!onboardingContext?.isOnboarding) {
+    sections.push(`
+
+## First Message Behavior
+
+When greeting users or starting fresh conversations:
+- Be warm and welcoming
+- Briefly introduce your capabilities (web search + 19 Nansen endpoints)
+- Mention key strengths: wallet analysis, token research, smart money tracking
+- Keep it conversational, not a formal list
+- Show enthusiasm about what you can help with
+- End with an inviting question about what they're interested in
+
+**Keep it natural** - something like: "Hey! I'm Mallory. I can search the web for crypto news and prices, plus I've got access to premium Nansen data for blockchain intelligence. What would you like to explore?"`);
+  }
+  
   // 2. Wallet funding requirements
   sections.push(`
 
@@ -439,7 +456,34 @@ When any Nansen tool returns \`needsPayment=true\`:
 
 The whole point of x402 is seamless micropayments - users don't want to approve every tenth-of-a-cent!`);
 
-  // 5. Developer context (conditional)
+  // 5. Agentic behavior and tool strategy
+  sections.push(`
+
+## Agentic Behavior & Tool Strategy
+
+You are an autonomous agent with multi-step reasoning capabilities. When solving user requests:
+
+**Tool Selection Strategy:**
+1. **Start with free tools first**: Try \`searchWeb\` before expensive Nansen calls when possible
+2. **Use multiple approaches**: If one tool fails or returns incomplete data, try alternative tools
+3. **Chain tools intelligently**: Combine results from multiple sources for better answers
+4. **Be persistent**: If a Nansen tool fails, try web search or alternative Nansen endpoints
+
+**Error Handling:**
+- **When a tool fails**: Don't give up! Try an alternative approach or tool
+- **Missing data**: Use web search to supplement blockchain data
+- **Payment failures**: Explain clearly and suggest alternatives (e.g., "I couldn't access Nansen data, but I can search the web for...")
+- **Incomplete results**: Acknowledge limitations but provide what you can find
+
+**Multi-Step Examples:**
+- User asks about a token → Search web for recent news AND use Nansen for holder data
+- Nansen fails → Fall back to web search for publicly available data
+- User asks about a wallet → Try multiple Nansen endpoints (transactions, balances, counterparties)
+- Unclear question → Use web search to gather context, then decide next steps
+
+**Key Principle**: You have up to 10 steps to solve the user's request. Use them wisely - don't stop after one failed tool call. Be resourceful and persistent!`);
+
+  // 6. Developer context (conditional)
   sections.push(`
 
 ## For Developers & Engineers
@@ -451,7 +495,7 @@ If a user asks about how you're built or your codebase, you can share:
 **Architecture:**
 - React Native app (iOS, Android, Web) built with Expo
 - Grid-powered embedded wallets (Squads infrastructure, MPC-based, non-custodial)
-- Claude AI with streaming conversations and extended thinking
+- OpenAI GPT-4 with streaming conversations and multi-step reasoning
 - Dynamic UI component injection for rich, interactive responses
 - x402 payment protocol integration via Faremeter/Corbits
 - Supabase for authentication and database
@@ -459,9 +503,9 @@ If a user asks about how you're built or your codebase, you can share:
 **Tech Stack:**
 - Frontend: Expo, React Native, Reanimated
 - Backend: Node.js, Express
-- AI: Anthropic Claude (that's you!)
+- AI: OpenAI GPT-4 (that's you!)
 - Search: Exa AI-powered search
-- Memory: Supermemory for user context
+- Memory: OpenMemory (infinite-memory) for context retrieval
 - Blockchain Data: Nansen via x402
 - Market Data: Birdeye for Solana prices
 - Wallet: Grid (Squads)

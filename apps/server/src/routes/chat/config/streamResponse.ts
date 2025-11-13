@@ -33,8 +33,23 @@ export function buildStreamResponse(
   let textParts = 0;
   let lastTextDelta = '';
   
+  if (!result || typeof result.toUIMessageStreamResponse !== 'function') {
+    const diagnosticInfo = {
+      hasResult: !!result,
+      constructorName: result?.constructor?.name,
+      availableKeys: result ? Object.keys(result) : [],
+      hasResponse: !!result?.response,
+      hasTextStream: !!result?.textStream,
+    };
+    console.error('❌ Invalid streamText result: missing toUIMessageStreamResponse', diagnosticInfo);
+    throw new Error('Invalid streamText result: toUIMessageStreamResponse is not available');
+  }
+
   const streamResponse = result.toUIMessageStreamResponse({
     sendReasoning: true, // Enable reasoning content in stream
+    sendStart: true, // Send start event with message ID
+    sendFinish: true, // Send finish event when complete
+    sendSources: true, // Send sources if available
     generateMessageId: () => {
       const id = uuidv4();
       console.log('🆔 Generated message ID:', id);
