@@ -47,6 +47,31 @@ const AVAILABLE_COMPONENTS: ComponentSchema[] = [
     "quote": "AI has made significant progress in recent years"
   }]
 }}}`
+  },
+  {
+    name: 'FlowForecastViz',
+    description: '🔮 Smart Money Flow Forecast Visualization - CRITICAL: ALWAYS use this component when presenting smartFlowForecaster results! Displays an animated chart showing current netflow, predicted inflow, pump probability, risk score, and trade recommendations with visual indicators.',
+    props: {
+      data: {
+        type: 'object',
+        required: true,
+        description: 'Forecast data object from smartFlowForecaster tool result. Must include: token, chain, currentNetflow, predictedInflow, pumpProbability, riskScore, confidence, forecastHorizon, recommendation, reasoning. Optional: positionQuote, transactionSignature'
+      }
+    },
+    example: `{{component: "FlowForecastViz", props: {
+  "data": {
+    "token": "3z2tRjNu...1DPg",
+    "chain": "solana",
+    "currentNetflow": 34309.80,
+    "predictedInflow": 68619.60,
+    "pumpProbability": 6.9,
+    "riskScore": 50,
+    "confidence": 50,
+    "forecastHorizon": "24h",
+    "recommendation": "watch",
+    "reasoning": "Current 24h netflow: $34,309.80. Predicted 24h inflow: $68,619.60..."
+  }
+}}}`
   }
 ];
 
@@ -100,6 +125,14 @@ You can render interactive UI components inline with your responses using this s
 ${componentDocs}
 
 ### When to Use Components
+
+**FlowForecastViz:**
+- **CRITICAL: ALWAYS use when presenting smartFlowForecaster tool results!**
+- Pass the complete tool result object as the \`data\` prop
+- Place component AFTER your explanation text
+- Component automatically animates and visualizes the forecast
+- Shows trend chart, pump probability gauge, risk indicators
+- Example: After explaining the forecast, add the component on a new line
 
 **InlineCitation:**
 - **CRITICAL: ALWAYS cite sources when using web search results**

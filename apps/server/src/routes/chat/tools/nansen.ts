@@ -129,21 +129,78 @@ function createGridSender(sessionSecrets: any, session: any, address: string): G
         }
       );
 
+      console.log('🔍 [Grid SDK] prepareArbitraryTransaction response:', {
+        hasPayload: !!transactionPayload,
+        hasData: !!transactionPayload?.data,
+        success: transactionPayload?.success,
+        error: transactionPayload?.error,
+        keys: transactionPayload ? Object.keys(transactionPayload) : []
+      });
+
       if (!transactionPayload || !transactionPayload.data) {
-        throw new Error('Failed to prepare transaction');
+        const errorMsg = transactionPayload?.error || 'No transaction data returned';
+        console.error('❌ [Grid SDK] prepareArbitraryTransaction failed:', {
+          transactionPayload,
+          errorMsg
+        });
+        throw new Error(`Failed to prepare transaction: ${errorMsg}`);
       }
 
+      // Normalize sessionSecrets: Convert object with numeric keys to array if needed
+      // Grid SDK expects sessionSecrets to be an array of raw key data
+      let normalizedSessionSecrets = sessionSecrets;
+      if (sessionSecrets && !Array.isArray(sessionSecrets) && typeof sessionSecrets === 'object') {
+        const keys = Object.keys(sessionSecrets);
+        // Check if all keys are numeric strings (indicating it should be an array)
+        const allNumericKeys = keys.every(key => /^\d+$/.test(key));
+        if (allNumericKeys && keys.length > 0) {
+          // Convert object with numeric keys to array
+          normalizedSessionSecrets = keys
+            .map(key => parseInt(key, 10))
+            .sort((a, b) => a - b)
+            .map(index => sessionSecrets[index.toString()]);
+          console.log('🔄 [Grid SDK] Normalized sessionSecrets from object to array:', {
+            originalKeys: keys,
+            arrayLength: normalizedSessionSecrets.length
+          });
+        }
+      }
+      
+      // SessionSecrets should remain as objects {publicKey, privateKey, provider, tag}
+      // Grid SDK needs the full object structure, NOT just the privateKey
+      console.log('🔐 [Grid SDK] SessionSecrets structure validated:', {
+        isArray: Array.isArray(normalizedSessionSecrets),
+        length: Array.isArray(normalizedSessionSecrets) ? normalizedSessionSecrets.length : 0,
+        firstElementType: Array.isArray(normalizedSessionSecrets) && normalizedSessionSecrets.length > 0 
+          ? typeof normalizedSessionSecrets[0] 
+          : 'N/A'
+      });
+
+      // CRITICAL: Pass session EXACTLY as received from client
+      // Grid SDK handles its own internal unwrapping - DO NOT normalize!
+      const normalizedSession = session;
+      
+      console.log('🔐 [Grid SDK] Session passed AS-IS (no normalization):', {
+        isArray: Array.isArray(session),
+        type: typeof session,
+        keys: Array.isArray(session) ? `array[${session.length}]` : (session && typeof session === 'object' ? Object.keys(session) : 'primitive')
+      });
+
+      // Log session structure for debugging
       console.log('🔐 [Grid SDK] signAndSend parameters:', {
-        hasSessionSecrets: !!sessionSecrets,
-        sessionType: typeof session,
-        sessionIsArray: Array.isArray(session),
-        sessionKeys: session ? Object.keys(session) : [],
+        hasSessionSecrets: !!normalizedSessionSecrets,
+        sessionSecretsType: typeof normalizedSessionSecrets,
+        sessionSecretsIsArray: Array.isArray(normalizedSessionSecrets),
+        sessionSecretsLength: Array.isArray(normalizedSessionSecrets) ? normalizedSessionSecrets.length : 'N/A',
+        sessionType: typeof normalizedSession,
+        sessionIsArray: Array.isArray(normalizedSession),
+        sessionKeys: normalizedSession ? Object.keys(normalizedSession) : [],
         address
       });
       
       const result = await gridClient.signAndSend({
-        sessionSecrets,
-        session,
+        sessionSecrets: normalizedSessionSecrets,
+        session: normalizedSession,
         transactionPayload: transactionPayload.data,
         address
       });

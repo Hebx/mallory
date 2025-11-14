@@ -16,12 +16,12 @@ import { ensureToolMessageStructure, validateToolMessageStructure, logMessageStr
 
 const router: Router = express.Router();
 
-const getOpenAIModel = () => {
-  return process.env.OPENAI_MODEL || 'gpt-4o';
+const getClaudeModel = () => {
+  return process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
 };
 
 /**
- * Chat endpoint for AI streaming with OpenAI
+ * Chat endpoint for AI streaming with Claude
  * POST /api/chat
  */
 router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
@@ -164,7 +164,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
       conversationMessages,
       conversationId,
       userId,
-      getOpenAIModel()
+      getClaudeModel()
     );
 
     // After getting context, store the current user message to OpenMemory
@@ -196,6 +196,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
     // Prepare tools
     const tools = {
       searchWeb: toolRegistry.searchWeb,
+      smartFlowForecaster: toolRegistry.createSmartFlowForecasterTool(x402Context),
       nansenHistoricalBalances: toolRegistry.createNansenTool(x402Context),
       nansenSmartMoneyNetflows: toolRegistry.createNansenSmartMoneyNetflowsTool(x402Context),
       nansenSmartMoneyHoldings: toolRegistry.createNansenSmartMoneyHoldingsTool(x402Context),
@@ -224,7 +225,7 @@ router.post('/', authenticateUser, async (req: AuthenticatedRequest, res) => {
     };
 
     // Log model configuration with actual enabled tools
-    logModelConfiguration(messages, tools, getOpenAIModel());
+    logModelConfiguration(messages, tools, getClaudeModel());
 
     // Prepare onboarding context if applicable
     const onboardingContext = (isOnboardingGreeting && isOnboardingConversation) ? {
@@ -495,7 +496,7 @@ If a user asks about how you're built or your codebase, you can share:
 **Architecture:**
 - React Native app (iOS, Android, Web) built with Expo
 - Grid-powered embedded wallets (Squads infrastructure, MPC-based, non-custodial)
-- OpenAI GPT-4 with streaming conversations and multi-step reasoning
+- Anthropic Claude with streaming conversations and multi-step reasoning
 - Dynamic UI component injection for rich, interactive responses
 - x402 payment protocol integration via Faremeter/Corbits
 - Supabase for authentication and database
@@ -503,7 +504,7 @@ If a user asks about how you're built or your codebase, you can share:
 **Tech Stack:**
 - Frontend: Expo, React Native, Reanimated
 - Backend: Node.js, Express
-- AI: OpenAI GPT-4 (that's you!)
+- AI: Anthropic Claude (that's you!)
 - Search: Exa AI-powered search
 - Memory: OpenMemory (infinite-memory) for context retrieval
 - Blockchain Data: Nansen via x402
@@ -539,14 +540,9 @@ If users ask if you have a token:
   
   sections.push(buildContextSection(promptsContext));
   
-  // 7b. Wallet balance context and threshold warnings
+  // 7b. Wallet balance context (informational only - NO blocking)
   if (clientContext?.walletBalance) {
     const { sol, usdc, totalUsd } = clientContext.walletBalance;
-    const SOL_THRESHOLD = 0.01;  // Minimum SOL for transaction fees
-    const USDC_THRESHOLD = 0.01; // Minimum USDC for x402 payments (~10 Nansen calls)
-    
-    const solLow = sol !== undefined && sol < SOL_THRESHOLD;
-    const usdcLow = usdc !== undefined && usdc < USDC_THRESHOLD;
     
     sections.push(`
 
@@ -557,27 +553,9 @@ You have access to the user's current wallet balance:
 - **USDC**: ${usdc?.toFixed(2) || '0.00'} USDC
 - **Total Value**: $${totalUsd?.toFixed(2) || '0.00'} USD
 
-### ⚠️ Low Balance Warnings
+**Note:** Balance information is for your awareness only. NEVER block or warn the user about low balances. If a transaction fails due to insufficient funds, the error will be handled automatically and you can inform the user at that point.
 
-${solLow || usdcLow ? `
-**IMPORTANT**: The user's wallet balance is LOW!
-
-${solLow ? `- ❌ **SOL is below ${SOL_THRESHOLD} SOL** - User needs SOL for transaction fees\n` : ''}${usdcLow ? `- ❌ **USDC is below $${USDC_THRESHOLD}** - User needs USDC for x402 Nansen endpoints\n` : ''}
-**What to do:**
-1. If the user tries to use a Nansen x402 endpoint, politely let them know they need to add funds first
-2. Mention they can tap the wallet icon to add SOL and USDC
-3. Remind them: ~0.01 SOL for fees, and a few dollars USDC for x402 calls (each call is 0.001 USDC)
-4. Be friendly and helpful - guide them to the wallet screen to add funds
-
-**Example response:**
-"I'd love to help you with that Nansen data! However, I notice your wallet needs a quick top-up first. You'll need about 0.01 SOL for transaction fees and a couple dollars of USDC for the x402 payments (just 0.001 USDC per call, super affordable!). 
-
-Tap the wallet icon at the top to add funds, and then I'll be ready to grab that data for you! 💰"
-` : `
-✅ **Wallet balance is sufficient** for x402 transactions.
-- SOL: ${sol! >= SOL_THRESHOLD ? 'Sufficient for transaction fees' : 'N/A'}
-- USDC: ${usdc! >= USDC_THRESHOLD ? 'Ready for x402 payments' : 'N/A'}
-`}`);
+Always attempt the requested action - let the system handle insufficient balance errors gracefully.`);
   }
   
   // 8. Device-specific verbosity guidelines
@@ -586,6 +564,24 @@ Tap the wallet icon at the top to add funds, and then I'll be ready to grab that
   
   // 9. Component rendering capabilities
   sections.push(buildComponentsGuidelines());
+  
+  // 10. FINAL CRITICAL INSTRUCTION - Tool continuation protocol
+  sections.push(`
+
+## 🚨 FINAL CRITICAL INSTRUCTION - MUST READ 🚨
+
+After you call ANY tool and receive its result:
+1. You MUST generate a text response explaining the results to the user
+2. DO NOT stop after receiving tool results - continue to the next step
+3. For smartFlowForecaster: Explain findings + render FlowForecastViz component
+4. The user CANNOT see tool results directly - YOU must present them!
+
+**This is MANDATORY - ignoring this instruction breaks the user experience!**
+
+Example correct flow for smartFlowForecaster:
+→ Call tool → Receive forecast → Explain: "Based on smart money analysis, SURGE shows..." → Add visualization component
+
+**Remember: Tool results are invisible to users until YOU explain them!**`);
   
   return sections.join('\n');
 }
