@@ -169,6 +169,7 @@ export class X402PaymentService {
       console.log('   Waiting 5s for funds to settle before sweep...');
       await new Promise(resolve => setTimeout(resolve, 5000));
       
+      console.log('🔄 [x402] Starting sweepAll call...');
       try {
         const sweepResult = await walletManager.sweepAll(
           ephemeralKeypair,
@@ -182,7 +183,8 @@ export class X402PaymentService {
         console.warn('   Funds may be stuck in:', ephemeralAddress);
       }
 
-      console.log('✅ [x402] Payment flow complete!');
+      console.log('✅ [x402] Payment flow complete! Returning data...');
+      console.log('📊 [x402] Data type:', typeof data, 'Keys:', data ? Object.keys(data).slice(0, 5) : 'null');
       return data;
 
     } catch (error) {

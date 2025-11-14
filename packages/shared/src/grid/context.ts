@@ -36,7 +36,9 @@ export async function loadGridContextForX402(
       hasAddress: !!account?.address,
       address: account?.address,
       hasAuthentication: !!account?.authentication,
-      authKeys: account?.authentication ? Object.keys(account.authentication) : []
+      authKeys: account?.authentication ? Object.keys(account.authentication) : [],
+      // Log FULL account structure to find Grid session
+      fullAccountDump: account ? JSON.stringify(account, null, 2).substring(0, 500) : 'N/A'
     });
     
     if (account && sessionSecretsJson) {

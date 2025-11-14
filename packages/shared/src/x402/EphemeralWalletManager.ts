@@ -246,13 +246,11 @@ export class EphemeralWalletManager {
           maxRetries: 3
         });
 
-        await this.connection.confirmTransaction({
-          signature,
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-
-        console.log('✅ [Ephemeral] Sweep complete:', { signature });
+        // Skip websocket confirmation (Alchemy HTTP RPC doesn't support it)
+        // Transaction was submitted successfully, confirmation will happen on-chain
+        console.log('✅ [Ephemeral] Sweep transaction submitted:', { signature });
+        console.log('   Waiting 3s for on-chain settlement...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
       } else {
         console.log('🧹 [Ephemeral] No funds to sweep');
       }
